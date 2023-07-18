@@ -3,8 +3,10 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
+using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Microsoft.Toolkit.Mvvm.ComponentModel;
+using SS14.Launcher.ViewModels.MainWindowTabs;
 
 namespace SS14.Launcher.Views.MainWindowTabs;
 
@@ -20,13 +22,15 @@ public partial class ServerEntryView : UserControl
     // Sets the style for the link buttons correctly so that they look fancy
     private void ApplyStyle(object? _1, EventArgs _2)
     {
-        for (var i = 0; i < Links.ItemCount; i++)
+        // Get all link Button controls
+        var buttons = Links.GetRealizedContainers()
+            .Select(p => (p as ContentPresenter)?.Child?.GetLogicalChildren().OfType<Button?>().FirstOrDefault())
+            .OfType<Button>()
+            .ToList();
+
+        // Apply class based on position
+        for (var i = 0; i < buttons.Count; i++)
         {
-            var presenter = Links.ItemContainerGenerator.ContainerFromIndex(i);
-            presenter.ApplyTemplate();
-
-            if (presenter is not ContentPresenter { Child: ServerInfoLinkControl control }) continue;
-
             string? style;
             if (Links.ItemCount == 1)
                 return;
@@ -37,7 +41,7 @@ public partial class ServerEntryView : UserControl
             else
                 style = "OpenBoth";
 
-            control.GetLogicalChildren().OfType<Button>().FirstOrDefault()?.Classes.Add(style);
+            buttons[i].Classes.Add(style);
         }
     }
 
