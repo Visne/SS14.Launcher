@@ -62,6 +62,17 @@ Taken & modified from Avalonia's git repo.
     <Setter Property="Margin" Value="0" />
   </Style>
 
+  <!-- If a button only contains an icon it looks nicer to have the margin be equal to the corner radius -->
+  <Style Selector="Button.OpenLeft.IconButton /template/ Panel#PART_Margin">
+    <Setter Property="Margin" Value="0 0 10 0" />
+  </Style>
+  <Style Selector="Button.OpenRight.IconButton /template/ Panel#PART_Margin">
+    <Setter Property="Margin" Value="10 0 0 0" />
+  </Style>
+  <Style Selector="Button.IconButton:not(.OpenRight):not(.OpenLeft):not(.OpenBoth) /template/ Panel#PART_Margin">
+    <Setter Property="Margin" Value="10 0" />
+  </Style>
+
   <Style Selector="Button:pointerover">
     <Setter Property="Background" Value="{DynamicResource ThemeButtonHoveredBrush}" />
   </Style>

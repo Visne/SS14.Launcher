@@ -3,9 +3,10 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
-using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Microsoft.Toolkit.Mvvm.ComponentModel;
+using Serilog;
 using SS14.Launcher.ViewModels.MainWindowTabs;
 
 namespace SS14.Launcher.Views.MainWindowTabs;
@@ -16,11 +17,34 @@ public partial class ServerEntryView : UserControl
     {
         InitializeComponent();
 
-        Links.LayoutUpdated += ApplyStyle;
+        Links.LayoutUpdated += ApplyButtonStyle;
+        FavoriteButtonIconLabel.LayoutUpdated += UpdateFavoriteButton;
+    }
+
+    private void UpdateFavoriteButton(object? _1, EventArgs _2)
+    {
+        if ((DataContext as ServerEntryViewModel) is not { } context)
+        {
+            Log.Error("Failed to get DataContext in ServerEntryView.UpdateFavoriteButton()");
+            return;
+        }
+
+        if (context.ViewedInFavoritesPane)
+        {
+            FavoriteButton.Classes.Add("OpenRight");
+        }
+        else
+        {
+            FavoriteButton.Classes.Remove("OpenRight");
+        }
+
+        FavoriteButtonIconLabel.Icon = context.IsFavorite
+            ? (IImage)this.FindResource("Icon-star")!
+            : (IImage)this.FindResource("Icon-star-outline")!;
     }
 
     // Sets the style for the link buttons correctly so that they look fancy
-    private void ApplyStyle(object? _1, EventArgs _2)
+    private void ApplyButtonStyle(object? _1, EventArgs _2)
     {
         // Get all link Button controls
         var buttons = Links.GetRealizedContainers()

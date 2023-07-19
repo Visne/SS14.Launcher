@@ -15,7 +15,9 @@
     <Expander Name="Expando" Classes="NoPad" IsExpanded="{Binding IsExpanded}">
       <Expander.Header>
         <DockPanel>
-          <Button IsEnabled="{Binding IsOnline}" DockPanel.Dock="Right" Content="Connect"
+          <Button Content="Join"
+                  DockPanel.Dock="Right"
+                  IsEnabled="{Binding IsOnline}"
                   Command="{Binding ConnectPressed}" />
           <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center"
                      TextAlignment="Center" Text="{Binding ServerStatusString}"
@@ -45,9 +47,14 @@
 
           <DockPanel Dock="Right">
             <!-- Favorite add/remove button -->
-            <Button Classes="OpenRight"
-                    Content="{Binding FavoriteButtonText}"
-                    Command="{Binding FavoriteButtonPressed}" />
+            <Button Name="FavoriteButton"
+                    Classes="IconButton"
+                    Command="{Binding FavoriteButtonPressed}">
+              <views:IconLabel Name="FavoriteButtonIconLabel"
+                               Icon="{DynamicResource Icon-star}"
+                               Content="{Binding FavoriteButtonText}"
+                               Height="20"/>
+            </Button>
 
             <!-- Raise to top button. -->
             <Button IsVisible="{Binding ViewedInFavoritesPane}"

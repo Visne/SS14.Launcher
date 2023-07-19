@@ -14,6 +14,10 @@ public static class IconsLoader
         ("info-icons/github.png", "InfoIcon-github"),
         ("info-icons/web.png", "InfoIcon-web"),
         ("info-icons/wiki.png", "InfoIcon-wiki"),
+        ("icons/refresh.png", "Icon-refresh"),
+        ("icons/plus.png", "Icon-plus"),
+        ("icons/star.png", "Icon-star"),
+        ("icons/star-outline.png", "Icon-star-outline"),
     };
 
     public static void Load(App app)
