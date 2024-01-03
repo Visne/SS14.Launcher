@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Reactive.Linq;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -54,14 +55,12 @@ public partial class DirectConnectDialog : Window
     private void TrySubmit()
     {
         if (!IsAddressValid(_addressBox.Text))
-        {
             return;
-        }
 
         Close(_addressBox.Text.Trim());
     }
 
-    internal static bool IsAddressValid(string address)
+    internal static bool IsAddressValid([NotNullWhen(true)] string? address)
     {
         return !string.IsNullOrWhiteSpace(address) && UriHelper.TryParseSs14Uri(address, out _);
     }

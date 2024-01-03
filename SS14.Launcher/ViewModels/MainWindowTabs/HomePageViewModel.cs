@@ -67,15 +67,10 @@ public class HomePageViewModel : MainWindowTabViewModel
     public async void DirectConnectPressed()
     {
         if (!TryGetWindow(out var window))
-        {
             return;
-        }
 
-        var res = await new DirectConnectDialog().ShowDialog<string>(window);
-        if (res == null)
-        {
+        if (await new DirectConnectDialog().ShowDialog<string?>(window) is not { } res)
             return;
-        }
 
         ConnectingViewModel.StartConnect(MainWindowViewModel, res);
     }
@@ -83,9 +78,7 @@ public class HomePageViewModel : MainWindowTabViewModel
     public async void AddFavoritePressed()
     {
         if (!TryGetWindow(out var window))
-        {
             return;
-        }
 
         var (name, address) = await new AddFavoriteDialog().ShowDialog<(string name, string address)>(window);
 
@@ -101,7 +94,7 @@ public class HomePageViewModel : MainWindowTabViewModel
         }
     }
 
-    private bool TryGetWindow([MaybeNullWhen(false)] out Window? window)
+    private bool TryGetWindow([NotNullWhen(true)] out Window? window)
     {
         window = Control?.GetVisualRoot() as Window;
         return window != null;
