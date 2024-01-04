@@ -4,6 +4,7 @@ using Microsoft.Toolkit.Mvvm.ComponentModel;
 using Microsoft.Toolkit.Mvvm.Messaging;
 using SS14.Launcher.Models.Data;
 using SS14.Launcher.Models.ServerStatus;
+using SS14.Launcher.Views;
 using static SS14.Launcher.Utility.HubUtility;
 
 namespace SS14.Launcher.ViewModels.MainWindowTabs;
@@ -161,6 +162,11 @@ public sealed class ServerEntryViewModel : ObservableRecipient, IRecipient<Favor
         }
 
         _cfg.CommitConfig();
+    }
+
+    public void EditButtonPressed()
+    {
+        new EditAddFavoriteDialog(Name, Address).Show();
     }
 
     public void FavoriteRaiseButtonPressed()

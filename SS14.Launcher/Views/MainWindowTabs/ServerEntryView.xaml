@@ -55,12 +55,17 @@
           </ItemsControl>
 
           <DockPanel Dock="Right">
-            <!-- Favorite add/remove button -->
             <Button Classes="OpenRight"
                     Content="{Binding FavoriteButtonText}"
                     Command="{Binding FavoriteButtonPressed}" />
 
-            <!-- Raise to top button. -->
+            <Button IsVisible="{Binding ViewedInFavoritesPane}"
+                    Classes="OpenBoth"
+                    Content="Edit"
+                    Command="{Binding EditButtonPressed}">
+              <ToolTip.Tip>Edit the server entry</ToolTip.Tip>
+            </Button>
+
             <Button IsVisible="{Binding ViewedInFavoritesPane}"
                     Classes="OpenLeft"
                     Content="Raise to top"
