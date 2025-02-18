@@ -38,9 +38,11 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Controls.TreeDataGrid"/>
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.ReactiveUI" />
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" />
+    <PackageReference Include="Avalonia.Themes.Fluent"/>
     <PackageReference Include="Avalonia.Themes.Simple" />
     <PackageReference Include="CodeHollow.FeedReader" />
     <PackageReference Include="Dapper" />

@@ -12,10 +12,10 @@ namespace SS14.Launcher.ViewModels.MainWindowTabs;
 public sealed class ServerEntryViewModel : ObservableRecipient, IRecipient<FavoritesChanged>, IViewModelBase
 {
     private readonly LocalizationManager _loc = LocalizationManager.Instance;
-    private readonly ServerStatusData _cacheData;
-    private readonly IServerSource _serverSource;
-    private readonly DataManager _cfg;
-    private readonly MainWindowViewModel _windowVm;
+    public readonly ServerStatusData _cacheData;
+    public readonly IServerSource _serverSource;
+    public readonly DataManager _cfg;
+    public readonly MainWindowViewModel _windowVm;
     private string Address => _cacheData.Address;
     private string _fallbackName = string.Empty;
     private bool _isExpanded;
