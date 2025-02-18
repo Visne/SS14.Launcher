@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using Avalonia.Controls;
@@ -48,7 +47,7 @@ public class ServerListTabViewModel : MainWindowTabViewModel
         }
     }
 
-    public static readonly NotifyCollectionChangedEventArgs ResetEvent = new(NotifyCollectionChangedAction.Reset);
+    private static readonly NotifyCollectionChangedEventArgs ResetEvent = new(NotifyCollectionChangedAction.Reset);
 
     public bool ListTextVisible => _serverListCache.Status != RefreshListStatus.Updated;
     public bool SpinnerVisible => _serverListCache.Status < RefreshListStatus.Updated;
@@ -108,27 +107,6 @@ public class ServerListTabViewModel : MainWindowTabViewModel
             }
         };
 
-        // var a = new ObservableCollection<Person>()
-        // {
-        //     new Person ("Eleanor", "Pope", 32 ),
-        //     new Person ("Jeremy", "Navarro", 74 ),
-        //     new Person ( "Lailah ", "Velazquez", 16 ),
-        //     new Person ( "Jazmine", "Schroeder", 52 ),
-        // };
-
-        // SearchedServers = new FlatTreeDataGridSource<Person>(a)
-        // {
-        //     Columns =
-        //     {
-        //         new TextColumn<Person, string>
-        //             ("First Name", x => x.FirstName),
-        //         new TextColumn<Person, string>
-        //             ("Last Name", x => x.LastName),
-        //         new TextColumn<Person, int>
-        //             ("Age", x => x.Age),
-        //     },
-        // };
-
         SearchedServers = new ServerTreeDataGridSource<ServerEntryViewModel>(_searchedServers)
         {
             Columns =
@@ -153,7 +131,6 @@ public class ServerListTabViewModel : MainWindowTabViewModel
 
     public class ServerExpanderColumn<TModel> : NotifyingBase,
         IColumn<TModel>,
-        IExpanderColumn<TModel>,
         IUpdateColumnLayout
         where TModel : class
     {
@@ -227,22 +204,12 @@ public class ServerListTabViewModel : MainWindowTabViewModel
             throw new NotSupportedException();
         }
 
-        public bool HasChildren(TModel model)
-        {
-            return true;
-        }
-
-        public IEnumerable<TModel>? GetChildModels(TModel model)
-        {
-            return _childSelector(model);
-        }
-
         public Comparison<TModel?>? GetComparison(ListSortDirection direction)
         {
             return _inner.GetComparison(direction);
         }
 
-        void IExpanderColumn<TModel>.SetModelIsExpanded(IExpanderRow<TModel> row)
+        public void SetModelIsExpanded(IExpanderRow<TModel> row)
         {
             _isExpandedBinding?.Write!.Invoke(row.Model, row.IsExpanded);
         }
@@ -294,7 +261,7 @@ public class ServerListTabViewModel : MainWindowTabViewModel
     {
         private IEnumerable<TModel> _items;
         private TreeDataGridItemsSourceView<TModel> _itemsView;
-        private IExpanderColumn<TModel>? _expanderColumn;
+        private ServerExpanderColumn<TModel>? _expanderColumn;
         private ServerRows<TModel>? _rows;
         private Comparison<TModel>? _comparison;
         private ITreeDataGridSelection? _selection;
@@ -304,7 +271,7 @@ public class ServerListTabViewModel : MainWindowTabViewModel
         {
             _items = items;
             _itemsView = TreeDataGridItemsSourceView<TModel>.GetOrCreate(items);
-            Columns = new ColumnList<TModel>();
+            Columns = [];
             Columns.CollectionChanged += OnColumnsCollectionChanged;
         }
 
@@ -318,7 +285,7 @@ public class ServerListTabViewModel : MainWindowTabViewModel
                     _items = value;
                     _itemsView = TreeDataGridItemsSourceView<TModel>.GetOrCreate(value);
                     _rows?.SetItems(_itemsView);
-                    if (_selection is object)
+                    if (_selection is not null)
                         _selection.Source = value;
                 }
             }
@@ -350,21 +317,11 @@ public class ServerListTabViewModel : MainWindowTabViewModel
 
         IEnumerable<object> ITreeDataGridSource.Items => Items;
 
-        public ITreeDataGridCellSelectionModel<TModel>? CellSelection
-            => Selection as ITreeDataGridCellSelectionModel<TModel>;
-
-        public ITreeDataGridRowSelectionModel<TModel>? RowSelection
-            => Selection as ITreeDataGridRowSelectionModel<TModel>;
-
         public bool IsHierarchical => true;
         public bool IsSorted => _comparison is not null;
 
         IColumns ITreeDataGridSource.Columns => Columns;
 
-        public event EventHandler<RowEventArgs<ServerRow<TModel>>>? RowExpanding;
-        public event EventHandler<RowEventArgs<ServerRow<TModel>>>? RowExpanded;
-        public event EventHandler<RowEventArgs<ServerRow<TModel>>>? RowCollapsing;
-        public event EventHandler<RowEventArgs<ServerRow<TModel>>>? RowCollapsed;
         public event Action? Sorted;
 
         public void Dispose()
@@ -373,227 +330,51 @@ public class ServerListTabViewModel : MainWindowTabViewModel
             GC.SuppressFinalize(this);
         }
 
-        /// <summary>
-        /// Collapses the row at the specified index.
-        /// </summary>
-        /// <param name="index">The index path of the row to collapse.</param>
-        public void Collapse(IndexPath index) => GetOrCreateRows().Collapse(index);
-
-        /// <summary>
-        /// Collapses all rows.
-        /// </summary>
-        public void CollapseAll() => GetOrCreateRows().ExpandCollapseRecursive(_ => false);
-
-        /// <summary>
-        /// Expands the row at the specified index.
-        /// </summary>
-        /// <param name="index">The index path of the row to expand.</param>
-        public void Expand(IndexPath index) => GetOrCreateRows().Expand(index);
-
-        /// <summary>
-        /// Expands all rows.
-        /// </summary>
-        public void ExpandAll() => GetOrCreateRows().ExpandCollapseRecursive(_ => true);
-
-        /// <summary>
-        /// Expands or collapses rows according to a condition.
-        /// </summary>
-        /// <param name="predicate">
-        /// A function which is passed a model instance and returns a boolean value representing
-        /// the desired expanded state of the row.
-        /// </param>
-        public void ExpandCollapseRecursive(Func<TModel, bool> predicate)
-        {
-            GetOrCreateRows().ExpandCollapseRecursive(predicate);
-        }
-
-        /// <summary>
-        /// Expands or collapses rows according to a condition, starting from the specified row.
-        /// </summary>
-        /// <param name="row">
-        /// The row from which to start expanding or collapsing.
-        /// </param>
-        /// <param name="predicate">
-        /// A function which is passed a model instance and returns a boolean value representing
-        /// the desired expanded state of the row.
-        /// </param>
-        public void ExpandCollapseRecursive(ServerRow<TModel> row, Func<TModel, bool> predicate)
-        {
-            GetOrCreateRows().ExpandCollapseRecursive(predicate, row);
-        }
-
-        public bool TryGetModelAt(IndexPath index, [NotNullWhen(true)] out TModel? result)
-        {
-            if (_expanderColumn is null)
-                throw new InvalidOperationException("No expander column defined.");
-
-            var items = (IEnumerable<TModel>?)Items;
-            var count = index.Count;
-
-            for (var depth = 0; depth < count; ++depth)
-            {
-                var i = index[depth];
-
-                if (i < items?.Count())
-                {
-                    var e = items.ElementAt(i)!;
-
-                    if (depth < count - 1)
-                    {
-                        items = _expanderColumn.GetChildModels(e);
-                    }
-                    else
-                    {
-                        result = e;
-                        return true;
-                    }
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            result = default;
-            return false;
-        }
-
-        public void Sort(Comparison<TModel>? comparison)
+        private void Sort(Comparison<TModel>? comparison)
         {
             _comparison = comparison;
             _rows?.Sort(_comparison);
         }
 
-        IEnumerable<object>? ITreeDataGridSource.GetModelChildren(object model)
+        public void DragDropRows(ITreeDataGridSource source, IEnumerable<IndexPath> indexes, IndexPath targetIndex,
+            TreeDataGridRowDropPosition position, DragDropEffects effects)
         {
-            return GetModelChildren((TModel)model);
+            throw new NotImplementedException();
+        }
+
+        IEnumerable<object> ITreeDataGridSource.GetModelChildren(object model)
+        {
+            TModel model1 = (TModel)model;
+            _ = _expanderColumn ?? throw new InvalidOperationException("No expander column defined.");
+            return [model1];
         }
 
         public bool SortBy(IColumn? column, ListSortDirection direction)
         {
-            if (column is IColumn<TModel> columnBase &&
-                Columns.Contains(columnBase) &&
-                columnBase.GetComparison(direction) is Comparison<TModel> comparison)
-            {
-                Sort(comparison);
-                Sorted?.Invoke();
-                foreach (var c in Columns)
-                    c.SortDirection = c == column ? (ListSortDirection?)direction : null;
-                return true;
-            }
+            if (column is not IColumn<TModel> columnBase ||
+                !Columns.Contains(columnBase) ||
+                columnBase.GetComparison(direction) is not { } comparison)
+                return false;
+            Sort(comparison);
+            Sorted?.Invoke();
+            foreach (var c in Columns)
+                c.SortDirection = c == column ? direction : null;
 
-            return false;
-        }
-
-        void ITreeDataGridSource.DragDropRows(
-            ITreeDataGridSource source,
-            IEnumerable<IndexPath> indexes,
-            IndexPath targetIndex,
-            TreeDataGridRowDropPosition position,
-            DragDropEffects effects)
-        {
-            IList<TModel> GetItems(IndexPath path)
-            {
-                IEnumerable<TModel>? children;
-
-                if (path.Count == 0)
-                    children = _items;
-                else if (TryGetModelAt(path, out var parent))
-                    children = GetModelChildren(parent);
-                else
-                    throw new IndexOutOfRangeException();
-
-                if (children is null)
-                    throw new InvalidOperationException("The requested drop target has no children.");
-
-                return children as IList<TModel> ??
-                       throw new InvalidOperationException("Items does not implement IList<T>.");
-            }
-
-            if (effects != DragDropEffects.Move)
-                throw new NotSupportedException("Only move is currently supported for drag/drop.");
-            if (IsSorted)
-                throw new NotSupportedException("Drag/drop is not supported on sorted data.");
-
-            IList<TModel> targetItems;
-            int ti;
-
-            if (position == TreeDataGridRowDropPosition.Inside)
-            {
-                targetItems = GetItems(targetIndex);
-                ti = targetItems.Count;
-            }
-            else
-            {
-                targetItems = GetItems(targetIndex[..^1]);
-                ti = targetIndex[^1];
-            }
-
-            if (position == TreeDataGridRowDropPosition.After)
-                ++ti;
-
-            var sourceItems = new List<TModel>();
-
-            foreach (var g in indexes.GroupBy(x => x[..^1]))
-            {
-                var items = GetItems(g.Key);
-
-                foreach (var i in g.Select(x => x[^1]).OrderByDescending(x => x))
-                {
-                    sourceItems.Add(items[i]);
-
-                    if (items == targetItems && i < ti)
-                        --ti;
-
-                    items.RemoveAt(i);
-                }
-            }
-
-            for (var si = sourceItems.Count - 1; si >= 0; --si)
-            {
-                targetItems.Insert(ti++, sourceItems[si]);
-            }
+            return true;
         }
 
         void IExpanderRowController<TModel>.OnBeginExpandCollapse(IExpanderRow<TModel> row)
         {
-            if (row is ServerRow<TModel> r)
-            {
-                if (!row.IsExpanded)
-                    RowExpanding?.Invoke(this, RowEventArgs.Create(r));
-                else
-                    RowCollapsing?.Invoke(this, RowEventArgs.Create(r));
-            }
         }
 
         void IExpanderRowController<TModel>.OnEndExpandCollapse(IExpanderRow<TModel> row)
         {
-            if (row is ServerRow<TModel> r)
-            {
-                if (row.IsExpanded)
-                    RowExpanded?.Invoke(this, RowEventArgs.Create(r));
-                else
-                    RowCollapsed?.Invoke(this, RowEventArgs.Create(r));
-            }
         }
 
         void IExpanderRowController<TModel>.OnChildCollectionChanged(
             IExpanderRow<TModel> row,
             NotifyCollectionChangedEventArgs e)
         {
-        }
-
-        internal IEnumerable<TModel>? GetModelChildren(TModel model)
-        {
-            _ = _expanderColumn ?? throw new InvalidOperationException("No expander column defined.");
-            return _expanderColumn.GetChildModels(model);
-        }
-
-        internal int GetRowIndex(in IndexPath index, int fromRowIndex = 0)
-        {
-            var result = -1;
-            _rows?.TryGetRowIndex(index, out result, fromRowIndex);
-            return result;
         }
 
         private ServerRows<TModel> GetOrCreateRows()
@@ -649,7 +430,7 @@ public class ServerListTabViewModel : MainWindowTabViewModel
             {
                 foreach (var i in newItems)
                 {
-                    if (i is IExpanderColumn<TModel> expander)
+                    if (i is ServerExpanderColumn<TModel> expander)
                     {
                         if (_expanderColumn is not null)
                         {
@@ -669,7 +450,7 @@ public class ServerListTabViewModel : MainWindowTabViewModel
             {
                 foreach (var i in items)
                 {
-                    if (i is IExpanderColumn<TModel> && _expanderColumn is not null)
+                    if (i is ServerExpanderColumn<TModel> && _expanderColumn is not null)
                     {
                         throw new InvalidOperationException($"The expander column cannot be {action}.");
                     }
@@ -678,21 +459,7 @@ public class ServerListTabViewModel : MainWindowTabViewModel
         }
     }
 
-    public class Person
-    {
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public int Age { get; set; }
-
-        public Person(string firstName, string lastName, int age)
-        {
-            FirstName = firstName;
-            LastName = lastName;
-            Age = age;
-        }
-    }
-
-    public abstract class MySingleSubscriberObservableBase<T> : IObservable<T>, IDisposable
+    private abstract class MySingleSubscriberObservableBase<T> : IObservable<T>, IDisposable
     {
         private Exception? _error;
         private IObserver<T>? _observer;
@@ -738,65 +505,33 @@ public class ServerListTabViewModel : MainWindowTabViewModel
             _observer?.OnNext(value);
         }
 
-        protected void PublishCompleted()
-        {
-            _completed = true;
-
-            if (_observer != null)
-            {
-                _observer.OnCompleted();
-                Unsubscribed();
-                _observer = null;
-            }
-        }
-
-        protected void PublishError(Exception error)
-        {
-            _error = error;
-
-            if (_observer != null)
-            {
-                _observer.OnError(error);
-                Unsubscribed();
-                _observer = null;
-            }
-        }
-
         protected abstract void Subscribed();
     }
 
-    public class MyShowExpanderObservable<TModel> : MySingleSubscriberObservableBase<bool>,
-        IObserver<BindingValue<bool>>,
-        IObserver<BindingValue<IEnumerable<TModel>?>>
+    private class MyShowExpanderObservable<TModel> (
+        Func<TModel, IEnumerable<TModel>?> childSelector,
+        TypedBinding<TModel, bool>? hasChildrenSelector,
+        TModel model)
+        : MySingleSubscriberObservableBase<bool>,
+            IObserver<BindingValue<bool>>,
+            IObserver<BindingValue<IEnumerable<TModel>?>>
         where TModel : class
     {
-        private readonly Func<TModel, IEnumerable<TModel>?> _childSelector;
-        private readonly TypedBinding<TModel, bool>? _hasChildrenSelector;
-        private TModel? _model;
+        private TModel? _model = model;
         private IDisposable? _subscription;
         private INotifyCollectionChanged? _incc;
-
-        public MyShowExpanderObservable(
-            Func<TModel, IEnumerable<TModel>?> childSelector,
-            TypedBinding<TModel, bool>? hasChildrenSelector,
-            TModel model)
-        {
-            _childSelector = childSelector;
-            _hasChildrenSelector = hasChildrenSelector;
-            _model = model;
-        }
 
         protected override void Subscribed()
         {
             if (_model is null)
                 throw new ObjectDisposedException(nameof(MyShowExpanderObservable<TModel>));
 
-            if (_hasChildrenSelector is not null)
-                _subscription = _hasChildrenSelector?.Instance(_model).Subscribe(this);
+            if (hasChildrenSelector is not null)
+                _subscription = hasChildrenSelector?.Instance(_model).Subscribe(this);
             else
                 // TODO: _childSelector needs to be made into a binding; leaving the observable
                 // machinery in place for this to be turned into a subscription later.
-                ((IObserver<BindingValue<IEnumerable<TModel>?>>)this).OnNext(new(_childSelector(_model)));
+                ((IObserver<BindingValue<IEnumerable<TModel>?>>)this).OnNext(new(childSelector(_model)));
         }
 
         protected override void Unsubscribed()
@@ -817,7 +552,7 @@ public class ServerListTabViewModel : MainWindowTabViewModel
             if (_incc is not null)
                 _incc.CollectionChanged -= OnCollectionChanged;
 
-            if (value.HasValue && value.Value is not null)
+            if (value is { HasValue: true, Value: not null })
             {
                 if (value.Value is INotifyCollectionChanged incc)
                 {
@@ -855,14 +590,14 @@ public class ServerListTabViewModel : MainWindowTabViewModel
         }
     }
 
-    public class ServerRows<TModel> : ReadOnlyListBase<ServerRow<TModel>>,
+    private class ServerRows<TModel> : ReadOnlyListBase<ServerRow<TModel>>,
         IRows,
         IDisposable,
-        IExpanderRowController<TModel>
+        IExpanderRowController<TModel> where TModel : class
     {
         private readonly IExpanderRowController<TModel> _controller;
         private readonly RootRows _roots;
-        private readonly IExpanderColumn<TModel> _expanderColumn;
+        private readonly ServerExpanderColumn<TModel> _expanderColumn;
         private readonly List<ServerRow<TModel>> _flattenedRows;
         private Comparison<TModel>? _comparison;
         private bool _ignoreCollectionChanges;
@@ -870,11 +605,11 @@ public class ServerListTabViewModel : MainWindowTabViewModel
         public ServerRows(
             IExpanderRowController<TModel> controller,
             TreeDataGridItemsSourceView<TModel> items,
-            IExpanderColumn<TModel> expanderColumn,
+            ServerExpanderColumn<TModel> expanderColumn,
             Comparison<TModel>? comparison)
         {
             _controller = controller;
-            _flattenedRows = new List<ServerRow<TModel>>();
+            _flattenedRows = [];
             _roots = new RootRows(this, items, comparison);
             _roots.CollectionChanged += OnRootsCollectionChanged;
             _expanderColumn = expanderColumn;
@@ -891,89 +626,6 @@ public class ServerListTabViewModel : MainWindowTabViewModel
             _ignoreCollectionChanges = true;
             _roots.Dispose();
             GC.SuppressFinalize(this);
-        }
-
-        public void Expand(IndexPath index)
-        {
-            var count = index.Count;
-            var rows = (IReadOnlyList<ServerRow<TModel>>?)_roots;
-
-            for (var i = 0; i < count; ++i)
-            {
-                if (rows is null)
-                    break;
-
-                var modelIndex = index[i];
-                var found = false;
-
-                foreach (var row in rows)
-                {
-                    if (row.ModelIndex == modelIndex)
-                    {
-                        row.IsExpanded = true;
-                        rows = row.Children;
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found)
-                    break;
-            }
-        }
-
-        internal void ExpandCollapseRecursive(Func<TModel, bool> predicate, ServerRow<TModel>? row = null)
-        {
-            _ignoreCollectionChanges = true;
-
-            try
-            {
-                if (row is not null)
-                    row.IsExpanded = predicate(row.Model);
-
-                var children = row is null ? _roots : row.Children;
-
-                if (children is not null)
-                    ExpandCollapseRecursiveCore(children, predicate);
-            }
-            finally
-            {
-                _ignoreCollectionChanges = false;
-            }
-
-            _flattenedRows.Clear();
-            InitializeRows();
-            CollectionChanged?.Invoke(this, ResetEvent);
-        }
-
-        public void Collapse(IndexPath index)
-        {
-            var count = index.Count;
-            var rows = (IReadOnlyList<ServerRow<TModel>>?)_roots;
-
-            for (var i = 0; i < count; ++i)
-            {
-                if (rows is null)
-                    break;
-
-                var modelIndex = index[i];
-                var found = false;
-
-                foreach (var row in rows)
-                {
-                    if (row.ModelIndex == modelIndex)
-                    {
-                        if (i == count - 1)
-                            row.IsExpanded = false;
-                        rows = row.Children;
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found)
-                    break;
-            }
         }
 
         public (int index, double y) GetRowAt(double y)
@@ -1016,21 +668,11 @@ public class ServerListTabViewModel : MainWindowTabViewModel
             _flattenedRows.Clear();
             InitializeRows();
             CollectionChanged?.Invoke(this, ResetEvent);
-
-            foreach (var row in _roots)
-            {
-                row.SortChildren(comparison);
-            }
         }
 
         public void UnrealizeCell(ICell cell, int rowIndex, int columnIndex)
         {
             (cell as IDisposable)?.Dispose();
-        }
-
-        public int GetParentRowIndex(IndexPath modelIndex)
-        {
-            return ModelIndexToRowIndex(modelIndex[..^1]);
         }
 
         public int ModelIndexToRowIndex(IndexPath modelIndex)
@@ -1082,7 +724,7 @@ public class ServerListTabViewModel : MainWindowTabViewModel
                 throw new NotSupportedException("Unexpected row type.");
         }
 
-        internal bool TryGetRowIndex(in IndexPath modelIndex, out int rowIndex, int fromRowIndex = 0)
+        private bool TryGetRowIndex(in IndexPath modelIndex, out int rowIndex, int fromRowIndex = 0)
         {
             if (modelIndex.Count == 0)
             {
@@ -1127,29 +769,6 @@ public class ServerListTabViewModel : MainWindowTabViewModel
             }
 
             return i - index;
-        }
-
-        private static void ExpandCollapseRecursiveCore(IReadOnlyList<ServerRow<TModel>> rows,
-            Func<TModel, bool> predicate)
-        {
-            for (var i = 0; i < rows.Count; ++i)
-            {
-                var row = rows[i];
-                var expand = predicate(row.Model);
-
-                if (expand)
-                {
-                    row.IsExpanded = true;
-                    if (row.Children is { } children)
-                        ExpandCollapseRecursiveCore(children, predicate);
-                }
-                else
-                {
-                    if (row.Children is { } children)
-                        ExpandCollapseRecursiveCore(children, predicate);
-                    row.IsExpanded = false;
-                }
-            }
         }
 
         private void OnCollectionChanged(in IndexPath parentIndex, NotifyCollectionChangedEventArgs e)
@@ -1299,28 +918,20 @@ public class ServerListTabViewModel : MainWindowTabViewModel
             OnCollectionChanged(default, e);
         }
 
-        private class RootRows : SortableRowsBase<TModel, ServerRow<TModel>>,
-            IReadOnlyList<ServerRow<TModel>>
+        private class RootRows (
+            ServerRows<TModel> owner,
+            TreeDataGridItemsSourceView<TModel> items,
+            Comparison<TModel>? comparison)
+            : SortableRowsBase<TModel, ServerRow<TModel>>(items, comparison)
         {
-            private readonly ServerRows<TModel> _owner;
-
-            public RootRows(
-                ServerRows<TModel> owner,
-                TreeDataGridItemsSourceView<TModel> items,
-                Comparison<TModel>? comparison)
-                : base(items, comparison)
-            {
-                _owner = owner;
-            }
-
             protected override ServerRow<TModel> CreateRow(int modelIndex, TModel model)
             {
                 return new ServerRow<TModel>(
-                    _owner,
-                    _owner._expanderColumn,
+                    owner,
+                    owner._expanderColumn,
                     new IndexPath(modelIndex),
                     model,
-                    _owner._comparison);
+                    owner._comparison);
             }
         }
     }
@@ -1329,19 +940,18 @@ public class ServerListTabViewModel : MainWindowTabViewModel
         IExpanderRow<TModel>,
         IIndentedRow,
         IModelIndexableRow,
-        IDisposable
+        IDisposable where TModel : class
     {
         private readonly IExpanderRowController<TModel> _controller;
-        private readonly IExpanderColumn<TModel> _expanderColumn;
+        private readonly ServerExpanderColumn<TModel> _expanderColumn;
         private Comparison<TModel>? _comparison;
         private IEnumerable<TModel>? _childModels;
         private ChildRows? _childRows;
         private bool _isExpanded;
-        private bool? _showExpander;
 
         public ServerRow(
             IExpanderRowController<TModel> controller,
-            IExpanderColumn<TModel> expanderColumn,
+            ServerExpanderColumn<TModel> expanderColumn,
             IndexPath modelIndex,
             TModel model,
             Comparison<TModel>? comparison)
@@ -1375,7 +985,7 @@ public class ServerListTabViewModel : MainWindowTabViewModel
         /// </summary>
         public IndexPath ModelIndexPath { get; private set; }
 
-        public object? Header => ModelIndexPath;
+        public object Header => ModelIndexPath;
         public int Indent => ModelIndexPath.Count - 1;
         public TModel Model { get; }
 
@@ -1400,11 +1010,7 @@ public class ServerListTabViewModel : MainWindowTabViewModel
             }
         }
 
-        public bool ShowExpander
-        {
-            get => _showExpander ??= _expanderColumn.HasChildren(Model);
-            private set => RaiseAndSetIfChanged(ref _showExpander, value);
-        }
+        public bool ShowExpander => true;
 
         public void Dispose() => _childRows?.Dispose();
 
@@ -1421,7 +1027,7 @@ public class ServerListTabViewModel : MainWindowTabViewModel
                 _childRows[i].UpdateParentModelIndex(ModelIndexPath);
         }
 
-        public void UpdateParentModelIndex(IndexPath parentIndex)
+        private void UpdateParentModelIndex(IndexPath parentIndex)
         {
             ModelIndexPath = parentIndex.Append(ModelIndex);
 
@@ -1436,52 +1042,23 @@ public class ServerListTabViewModel : MainWindowTabViewModel
 
         void IExpanderRow<TModel>.UpdateShowExpander(IExpanderCell cell, bool value)
         {
-            ShowExpander = value;
-        }
-
-        internal void SortChildren(Comparison<TModel>? comparison)
-        {
-            _comparison = comparison;
-
-            if (_childRows is null)
-                return;
-
-            _childRows.Sort(comparison);
-
-            foreach (var row in _childRows)
-            {
-                row.SortChildren(comparison);
-            }
         }
 
         private void Expand()
         {
-            if (!_expanderColumn.HasChildren(Model))
-            {
-                _expanderColumn.SetModelIsExpanded(this);
-                return;
-            }
-
             _controller.OnBeginExpandCollapse(this);
 
             var oldExpanded = _isExpanded;
-            var childModels = _expanderColumn.GetChildModels(Model);
+            var childModels = (IEnumerable<TModel>) [Model];
 
             if (_childModels != childModels)
             {
                 _childModels = childModels;
                 _childRows?.Dispose();
-                _childRows = new ChildRows(
-                    this,
-                    TreeDataGridItemsSourceView<TModel>.GetOrCreate(childModels),
-                    _comparison);
+                _childRows = new ChildRows(this, new TreeDataGridItemsSourceView<TModel>(childModels), _comparison);
             }
 
-            if (_childRows?.Count > 0)
-                _isExpanded = true;
-            else
-                ShowExpander = false;
-
+            _isExpanded = true;
             _controller.OnChildCollectionChanged(this, ResetEvent);
 
             if (_isExpanded != oldExpanded)
@@ -1501,8 +1078,7 @@ public class ServerListTabViewModel : MainWindowTabViewModel
             _expanderColumn.SetModelIsExpanded(this);
         }
 
-        private class ChildRows : SortableRowsBase<TModel, ServerRow<TModel>>,
-            IReadOnlyList<ServerRow<TModel>>
+        private class ChildRows : SortableRowsBase<TModel, ServerRow<TModel>>
         {
             private readonly ServerRow<TModel> _owner;
 
@@ -1534,40 +1110,29 @@ public class ServerListTabViewModel : MainWindowTabViewModel
         }
     }
 
-    private class MyListSpan : IList
+    private class MyListSpan (IList items, int index, int count) : IList
     {
-        private readonly IList _items;
-        private readonly int _index;
-        private readonly int _count;
-
-        public MyListSpan(IList items, int index, int count)
-        {
-            _items = items;
-            _index = index;
-            _count = count;
-        }
-
-        public object? this[int index]
+        public object? this[int index1]
         {
             get
             {
-                if (index >= _count)
+                if (index1 >= count)
                     throw new ArgumentOutOfRangeException();
-                return _items[_index + index];
+                return items[index + index1];
             }
             set => throw new NotSupportedException();
         }
 
         bool IList.IsFixedSize => true;
         bool IList.IsReadOnly => true;
-        int ICollection.Count => _count;
+        int ICollection.Count => count;
         bool ICollection.IsSynchronized => false;
         object ICollection.SyncRoot => this;
 
         public IEnumerator GetEnumerator()
         {
-            for (var i = 0; i < _count; ++i)
-                yield return _items[_index + i];
+            for (var i = 0; i < count; ++i)
+                yield return items[index + i];
         }
 
         int IList.Add(object? value) => throw new NotSupportedException();
