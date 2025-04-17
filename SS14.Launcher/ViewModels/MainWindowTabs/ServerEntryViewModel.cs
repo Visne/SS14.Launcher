@@ -27,6 +27,9 @@ public sealed class ServerEntryViewModel : ObservableRecipient, IRecipient<Favor
         _windowVm = windowVm;
         _cacheData = cacheData;
         _serverSource = serverSource;
+
+        // TODO: Should most likely be subscribed/unsubscribed based on visual tree, like before
+        _cacheData.PropertyChanged += OnCacheDataOnPropertyChanged;
     }
 
     public ServerEntryViewModel(
